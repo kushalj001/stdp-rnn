@@ -133,15 +133,16 @@ class QuestionClassificationDataLoader:
     def __iter__(self):
     
         for batch in self.data:
-            max_qtn_len = max([len(qtn) for qtn in batch.question_ids])
+            qtn_lengths = [len(qtn) for qtn in batch.question_ids]
+            max_qtn_len = max(qtn_lengths)
             padded_qtn = torch.LongTensor(len(batch), max_qtn_len).fill_(1)
             
             for i, qtn in enumerate(batch.question_ids):
                 padded_qtn[i, :len(qtn)] = torch.LongTensor(qtn)
             
             label = torch.LongTensor(list(batch.label))
-            
-            yield {"questions":padded_qtn, "labels":label}
+            qtn_lengths = torch.LongTensor(qtn_lengths)
+            yield {"questions":padded_qtn, "labels":label, "qtn_lengths": qtn_lengths}
 
 ## Only a single function is needed to generate data for copy task
 # TODO: setup data generation for incremental learning setup

@@ -16,6 +16,7 @@ def train_batch(model, criterion, optimizer, batch, device):
 
     model.reset(batch_size)
 
+    # [5, 32, 8]
     for i in range(input_seq_len):
         model(inp[i])
 
@@ -37,8 +38,10 @@ def train_batch(model, criterion, optimizer, batch, device):
     return loss.item(), cost.item() / batch_size
 
 
-def evaluate_batch(model, criterion, optimizer, batch, device):
+def evaluate_batch(model, criterion, batch, device):
     idx, inp, outp = batch
+
+        
     inp = inp.to(device)
     outp = outp.to(device)
 
@@ -47,16 +50,23 @@ def evaluate_batch(model, criterion, optimizer, batch, device):
     output_seq_len, batch_size, _ = outp.shape
 
     model.reset(batch_size)
-
+    for i in range(input_seq_len):
+        model(inp[i])
     preds = torch.zeros(outp.shape)
     model_init = torch.zeros(batch_size, input_dim)
     for i in range(output_seq_len):
         preds[i] = model(model_init)
 
     loss = criterion(preds, outp)
-    loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
+    
+
+    # get cost
+    preds_binarized = preds.clone().data
+    preds_binarized = (preds_binarized > 0.5).float()
+    # The cost is the number of error bits per sequence
+    cost = torch.sum(torch.abs(preds_binarized - outp.data))
+    acc = torch.mean((preds_binarized == outp).float())
+    return loss.item(), acc.item(), cost.item() / batch_size
 
     # get cost
     preds_binarized = preds.clone().data

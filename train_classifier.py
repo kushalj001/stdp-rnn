@@ -21,8 +21,9 @@ def train(model, optimizer, train_loader, device):
 
         question_ids = batch['questions'].to(device)
         labels = batch['labels'].to(device)
+        qtn_lengths = batch["qtn_lengths"].to(device)
 
-        preds = model(question_ids)
+        preds = model(question_ids, qtn_lengths)
         loss = F.cross_entropy(preds, labels)
         
         train_loss += loss.item()
@@ -48,10 +49,10 @@ def validate(model, valid_loader, device):
 
         question_ids = batch['questions'].to(device)
         labels = batch['labels'].to(device)
-
+        qtn_lengths = batch["qtn_lengths"].to(device)
         with torch.no_grad():
             
-            preds = model(question_ids)
+            preds = model(question_ids, qtn_lengths)
             loss = F.cross_entropy(preds, labels)
         
             valid_loss += loss.item()
@@ -87,19 +88,19 @@ if __name__ == "__main__":
 
     ## model hyperparameters
     emb_dim = 100
-    projection_dim = 64
-    rnn_hidden_dim = 32
+    rnn_hidden_dim = 256
+    fc_dim = 128
     num_classes = 6
     device = torch.device("cpu")
 
     ## create a model
-    model = QuestionClassifier(emb_dim, projection_dim, rnn_hidden_dim, num_classes, device)
+    model = QuestionClassifier(emb_dim, fc_dim, rnn_hidden_dim, num_classes, device)
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
 
     ## train the model
-    epochs = 10
+    epochs = 50
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}")
