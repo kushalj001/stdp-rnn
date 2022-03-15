@@ -6,7 +6,7 @@ class CustomModelWrapper(ModelWrapper):
     def __init__(self, model, review, device):
     
         self.model = model
-        self.review = review
+        self.review = review # placeholder for dataset: vectors, stoi
         self.device = device
 
     def __call__(self, text_input_list):

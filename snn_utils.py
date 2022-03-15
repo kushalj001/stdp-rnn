@@ -76,7 +76,7 @@ class SleepRNNLayer:
                 layer_object = getattr(model, name)
                 linear_weights.append(layer_object.weight_ih_l0.T.cpu().detach().numpy())
                 layer_idx_mapping[name].append(idx)
-                recurrent_weights.append(layer_object.weight_hh_l0.cpu().detach().numpy())
+                recurrent_weights.append(layer_object.weight_hh_l0.T.cpu().detach().numpy())
                 layer_idx_mapping[name].append(idx)
                 is_recurrent.append(True)
                 idx += 1
@@ -90,10 +90,10 @@ class SleepRNNLayer:
             if len(idx) > 1:
                 layer_object = getattr(model, name)
                 layer_object.weight_ih_l0 = nn.Parameter(torch.from_numpy(linear_weights[idx[0]].T))
-                layer_object.weight_hh_l0 = nn.Parameter(torch.from_numpy(recurrent_weights[idx[1]]))
+                layer_object.weight_hh_l0 = nn.Parameter(torch.from_numpy(recurrent_weights[idx[1]].T))
             else:
                 layer_object = getattr(model, name)
-                layer_object.weight = nn.Parameter(torch.from_numpy(linear_weights[idx[0]]))
+                layer_object.weight = nn.Parameter(torch.from_numpy(linear_weights[idx[0]].T))
         return model
 
     def sleep(self, model, sleep_input, num_iterations):

@@ -61,6 +61,9 @@ def train(model, criterion, optimizer, train_stream, test_stream, device, epochs
         train_results.append(exp_result)
     return train_results
 
+# Train IMDB model with induced typos, not adv changes.
+# Train the model with all the permutations at once: 180_000 images.
+# PMNIST: train on 2 exp=> sleep=> evaluate on both the experiences.
 
 def test(model, test_stream, criterion, device):
     model.eval()
@@ -88,6 +91,7 @@ def test(model, test_stream, criterion, device):
             "exp_test_loss": exp_test_loss/len(exp_test_dataset)
         }
         test_results.append(exp_result)
+    return test_results
 
 def create_sleep_input(train_stream, num_iterations):
     imgs = []
@@ -95,16 +99,19 @@ def create_sleep_input(train_stream, num_iterations):
         dataset = exp.dataset
         for ex in dataset:
             imgs.append(ex[0])
-    
+    # [180k, 1, 28, 28]
     imgs = torch.stack(imgs, dim=0)
     imgs = imgs.squeeze(dim=1)
+    # [180k, 28, 28]
     sleep_input = torch.mean(imgs, dim=[0,1])
+    # [28]
+    # average row value [0,2]?
     sleep_input = torch.tile(sleep_input, (num_iterations,1))
     sleep_input = sleep_input.cpu().detach().numpy()
     return sleep_input
 
 if __name__ == "__main__":
-    perm_mnist = PermutedMNIST(n_experiences=3, seed=1234)
+    perm_mnist = PermutedMNIST(n_experiences=2, seed=1234)
 
     input_dim = 28
     seq_len = 28
@@ -114,13 +121,13 @@ if __name__ == "__main__":
     dropout = 0.2
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_layers = 1
-    epochs = 5
+    epochs = 2
     model = MnistRNN(input_dim, fc_dim, rnn_hidden_dim, output_dim, num_layers, dropout, device)
     model.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters())
-    train_stream = perm_mnist.train_stream
+    train_stream = perm_mnist.train_stream # dataset for all the exps
     test_stream = perm_mnist.test_stream
     train_results = train(model, criterion, optimizer,train_stream, test_stream, device, epochs)
     print(train_results)
