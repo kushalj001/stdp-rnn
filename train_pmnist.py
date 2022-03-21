@@ -1,5 +1,7 @@
-from typing import Sequence, Union, Image, Tensor, Optional, Any, Path
-import avalanche
+from typing import Sequence, Union, Optional, Any
+from pathlib import Path
+from PIL.Image import Image
+from torch import Tensor
 import torch
 from torch import nn
 import torch.nn.functional as F
