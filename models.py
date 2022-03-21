@@ -151,7 +151,7 @@ class MnistRNN(nn.Module):
         out = out[:,-1,:]
         # [bs, hid_dim]
 
-        logits = F.relu(self.fc2(F.relu(self.fc1(out))))
+        logits = self.fc2(F.relu(self.fc1(out)))
         # [bs, num_classes]
 
         return logits
