@@ -189,7 +189,7 @@ def train(model, criterion, optimizer, train_stream, test_stream, device, epochs
                 optimizer.zero_grad()
                 exp_train_loss += loss.item()
                 exp_train_acc += torch.sum((torch.argmax(preds,dim=-1)==labels)).item()
-            exp_train_losses.append(exp_train_loss/len(exp_train_dataset))
+            exp_train_losses.append(exp_train_loss/len(exp_train_loader))
             exp_train_accs.append(exp_train_acc/len(exp_train_dataset))
 
         exp_test_loss = 0
@@ -210,7 +210,7 @@ def train(model, criterion, optimizer, train_stream, test_stream, device, epochs
             "exp_id": exp.current_experience,
             "exp_train_loss": exp_train_losses[-1],
             "exp_train_acc": exp_train_accs[-1],
-            "exp_test_loss": exp_test_loss/len(exp_test_dataset),
+            "exp_test_loss": exp_test_loss/len(exp_test_loader),
             "exp_test_acc": exp_test_acc / len(exp_test_dataset)
         }
         train_results.append(exp_result)
