@@ -254,11 +254,11 @@ def create_sleep_input(train_stream, num_iterations):
         dataset = exp.dataset
         for ex in dataset:
             imgs.append(ex[0])
-    # [180k, 1, 28, 28]
+    # [120k, 1, 28, 28]
     imgs = torch.stack(imgs, dim=0)
     imgs = imgs.squeeze(dim=1)
-    # [180k, 28, 28]
-    sleep_input = torch.mean(imgs, dim=[0,1])
+    # [120k, 28, 28]
+    sleep_input = torch.mean(imgs, dim=[0,2])
     # [28]
     # average row value [0,2]?
     sleep_input = torch.tile(sleep_input, (num_iterations,1))
