@@ -122,10 +122,10 @@ class IMDBClassifierRNN(nn.Module):
         # hidden only contains the final hidden states 
         # we usually make predictions using the final hidden states.
         
-        hidden = hidden[-1,:,:]
+        out = output[:,-1,:]
         # [bs, rnn_hidden_dim]
         
-        logits = F.relu(self.fc2(F.relu(self.fc1(hidden))))
+        logits = self.fc2(F.relu(self.fc1(out)))
         # [bs, num_classes]
         
         return logits
@@ -156,4 +156,53 @@ class MnistRNN(nn.Module):
 
         return logits
             
-            
+class CorruptedIMDBClassifierRNN(nn.Module):
+    
+    def __init__(self, input_dim, emb_dim, fc_dim, rnn_hidden_dim, output_dim, pad_idx, num_layers, dropout, device):
+        super().__init__()
+        self.device = device
+        self.pad_idx = pad_idx
+        self.embedding = self.get_glove_embedding()
+        self.rnn = nn.RNN(input_size=emb_dim, hidden_size=rnn_hidden_dim, num_layers=num_layers, 
+                          batch_first=True)
+        self.fc1 = nn.Linear(in_features=rnn_hidden_dim, out_features=fc_dim)
+        self.fc2 = nn.Linear(in_features=fc_dim, out_features=output_dim)
+        self.dropout = nn.Dropout(dropout)
+    
+    def get_glove_embedding(self):
+        
+        weights_matrix = np.load('glove-imdb100d.npy')
+        num_embeddings, embedding_dim = weights_matrix.shape
+        embedding = nn.Embedding.from_pretrained(torch.FloatTensor(weights_matrix).to(self.device),freeze=False, padding_idx=self.pad_idx)
+        return embedding
+    
+    def forward(self, text, text_lengths):
+        # text = [bs, seq_len]
+        
+        embedded = F.relu(self.embedding(text))
+        # embed = [bs, seq_len, emb_dim]
+
+        
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths.to("cpu"), batch_first=True)
+        # pack sequence to ignore padded positions while calculating hidden states.
+        # projected = F.relu(self.projection_layer(embed))
+        # projected = [bs, seq_len, projection_dim]
+        
+        packed_output, hidden = self.rnn(packed_embedded)
+
+        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+        # out = [bs, seq_len, rnn_hidden_dim]
+        # hidden = [1, bs, rnn_hidden_dim]
+        # output over padded tokens are zero tensors
+        # out stacks the hidden states for all time-steps
+        # hidden only contains the final hidden states 
+        # we usually make predictions using the final hidden states.
+        
+        hidden = output[:,-1,:]
+        # [bs, rnn_hidden_dim]
+        
+        logits = self.fc2(F.relu(self.fc1(hidden)))
+        # [bs, num_classes]
+        
+        return logits
+
