@@ -110,6 +110,7 @@ if __name__ == "__main__":
 
     ## train the model
     epochs = 20
+    best_valid_loss = float("inf")
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}")
@@ -120,7 +121,9 @@ if __name__ == "__main__":
         valid_loss, valid_acc = validate(model, valid_loader)
         end_time = time.time()
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
-        
+        if valid_loss < best_valid_loss:
+            best_valid_loss = valid_loss
+            torch.save(model.state_dict(), 'qtn_classifier_best.pt')
         print(f"Epoch train loss : {train_loss}| Time: {epoch_mins}m {epoch_secs}s")
         print(f"Epoch valid loss: {valid_loss}")
         print(f"Epoch train accuracy: {train_acc}")
