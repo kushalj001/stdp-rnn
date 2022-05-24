@@ -1,13 +1,18 @@
 import torch
 import torch.nn.functional as F
-from sklearn.model_selection import train_test_split
-from data import QuestionClassificationDataLoader, build_word_vocab, convert_to_dataframe, load_data, preprocess, question_to_ids
-from models import QuestionClassifier
+from data import (
+    QuestionClassificationDataLoader, 
+    build_word_vocab, 
+    convert_to_dataframe, 
+    load_data, preprocess, 
+    text_to_ids
+)
+from models import QuestionClassifierRNN
 from utils import create_glove_matrix, create_word_embedding, epoch_time
 import time
 import numpy as np
 
-def train(model, optimizer, train_loader, device):
+def train(model, optimizer, train_loader):
     
     print("Starting Training")
     train_loss = 0.
@@ -19,10 +24,9 @@ def train(model, optimizer, train_loader, device):
         if bi % 100 == 0:
             print(f"Starting batch: {bi}")
 
-        question_ids = batch['questions'].to(device)
+        question_ids = batch['text'].to(device)
         labels = batch['labels'].to(device)
-        qtn_lengths = batch["qtn_lengths"].to(device)
-
+        qtn_lengths = batch["text_lengths"].to(device)
         preds = model(question_ids, qtn_lengths)
         loss = F.cross_entropy(preds, labels)
         
@@ -35,7 +39,8 @@ def train(model, optimizer, train_loader, device):
     return train_loss/len(train_loader), train_acc/len(train_loader)
     
     
-def validate(model, valid_loader, device):
+
+def validate(model, valid_loader):
     
     print("Starting validation")
     valid_loss = 0.
@@ -47,14 +52,14 @@ def validate(model, valid_loader, device):
         if bi % 20 == 0:
             print(f"Starting batch: {bi}")
 
-        question_ids = batch['questions'].to(device)
+        question_ids = batch['text'].to(device)
         labels = batch['labels'].to(device)
-        qtn_lengths = batch["qtn_lengths"].to(device)
+        qtn_lengths = batch["text_lengths"].to(device)
         with torch.no_grad():
             
             preds = model(question_ids, qtn_lengths)
             loss = F.cross_entropy(preds, labels)
-        
+            
             valid_loss += loss.item()
             valid_acc += (torch.argmax(preds,dim=1)==labels).float().mean().item()
     
@@ -64,16 +69,21 @@ def validate(model, valid_loader, device):
 if __name__ == "__main__":
 
     ## Load training data and preprocess it
-    questions, coarse_labels, _ = load_data("train_4000.label.txt")
-    questions = preprocess(questions)
-    word2idx, idx2word, word_vocab = build_word_vocab(questions)
-    data = convert_to_dataframe(questions, coarse_labels)
-    question_ids = question_to_ids(questions, word2idx)
-    data["question_ids"] = question_ids
+    train_examples, train_labels, _ = load_data("train_5500.label.txt")
+    valid_examples, valid_labels, _ = load_data("TREC_10.label.txt")
+    train_examples = preprocess(train_examples)
+    valid_examples = preprocess(valid_examples)
+    word2idx, idx2word, word_vocab = build_word_vocab(train_examples)
+    train_data = convert_to_dataframe(train_examples, train_labels)
+    valid_data = convert_to_dataframe(valid_examples, valid_labels)
+    train_text_ids = text_to_ids(train_examples, word2idx)
+    valid_text_ids = text_to_ids(valid_examples, word2idx)
+    train_data["text_ids"] = train_text_ids
+    valid_data["text_ids"] = valid_text_ids
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    ## Split the data into training and validation sets.
+    train_data = train_data.sample(frac=1).reset_index(drop=True)
     ## Create dataloaders for training and validation set.
-    train_data, valid_data = train_test_split(data, test_size=0.2)
     train_loader = QuestionClassificationDataLoader(train_data, 32)
     valid_loader = QuestionClassificationDataLoader(valid_data, 32)
 
@@ -94,21 +104,20 @@ if __name__ == "__main__":
     device = torch.device("cpu")
 
     ## create a model
-    model = QuestionClassifier(emb_dim, fc_dim, rnn_hidden_dim, num_classes, device)
+    model = QuestionClassifierRNN(emb_dim, fc_dim, rnn_hidden_dim, num_classes, device)
     model = model.to(device)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
 
     ## train the model
-    epochs = 50
+    epochs = 20
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}")
 
         start_time = time.time()
 
-        train_loss, train_acc = train(model, optimizer, train_loader, device)
-        valid_loss, valid_acc = validate(model, valid_loader, device)
+        train_loss, train_acc = train(model, optimizer, train_loader)
+        valid_loss, valid_acc = validate(model, valid_loader)
         end_time = time.time()
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
         

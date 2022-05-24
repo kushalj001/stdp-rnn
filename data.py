@@ -83,14 +83,14 @@ def build_word_vocab(vocab_text):
     
     return word2idx, idx2word, word_vocab
 
-def convert_to_dataframe(questions, coarse_labels):
+def convert_to_dataframe(texts, labels):
     """
     Converts the dataset into a dataframe for easy access of 
     input questions and the corresponding labels.
     """
     data_list = []
-    for i in range(len(questions)):
-        data_list.append({"question":questions[i], "label_text": coarse_labels[i]})
+    for i in range(len(texts)):
+        data_list.append({"text":texts[i], "label_text": labels[i]})
         
     data = pd.DataFrame(data_list)
     data.label_text = pd.Categorical(data.label_text)
@@ -98,8 +98,8 @@ def convert_to_dataframe(questions, coarse_labels):
     
     return data
 
-def question_to_ids(questions, word2idx):
-    """
+def text_to_ids(texts, word2idx):
+    '''
     Converts question text to their respective ids by mapping each word
     using word2idx. Input text is tokenized using whitespace tokenizer first.
     
@@ -109,14 +109,14 @@ def question_to_ids(questions, word2idx):
     
     :raises assertion error: sanity check
     
-    """
-    qtn_ids = []
-    for i, text in enumerate(questions):
-        qtn_tokens = text.split()
-        qtn_id = [word2idx[word] for word in qtn_tokens]
-        qtn_ids.append(qtn_id)
+    '''
+    txt_ids = []
+    for i, text in enumerate(texts):
+        txt_tokens = text.split()
+        txt_id = [word2idx.get(word, 0) for word in txt_tokens]
+        txt_ids.append(txt_id)
     
-    return qtn_ids
+    return txt_ids
 
 
 class QuestionClassificationDataLoader:
@@ -133,16 +133,19 @@ class QuestionClassificationDataLoader:
     def __iter__(self):
     
         for batch in self.data:
-            qtn_lengths = [len(qtn) for qtn in batch.question_ids]
-            max_qtn_len = max(qtn_lengths)
-            padded_qtn = torch.LongTensor(len(batch), max_qtn_len).fill_(1)
+            batch["len"] = batch["text_ids"].str.len()
+            batch = batch.sort_values(by="len", ascending=False).drop(columns="len")
             
-            for i, qtn in enumerate(batch.question_ids):
-                padded_qtn[i, :len(qtn)] = torch.LongTensor(qtn)
+            txt_lengths = [len(txt) for txt in batch.text_ids]
+            max_txt_len = txt_lengths[0]
+            padded_txt = torch.LongTensor(len(batch), max_txt_len).fill_(1)
+            
+            for i, txt in enumerate(batch.text_ids):
+                padded_txt[i, :len(txt)] = torch.LongTensor(txt)
             
             label = torch.LongTensor(list(batch.label))
-            qtn_lengths = torch.LongTensor(qtn_lengths)
-            yield {"questions":padded_qtn, "labels":label, "qtn_lengths": qtn_lengths}
+            txt_lengths = torch.LongTensor(txt_lengths)
+            yield {"text":padded_txt, "labels":label, "text_lengths":txt_lengths}
 
 ## Only a single function is needed to generate data for copy task
 # TODO: setup data generation for incremental learning setup

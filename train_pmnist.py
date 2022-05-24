@@ -266,7 +266,7 @@ def create_sleep_input(train_stream, num_iterations):
     return sleep_input
 
 if __name__ == "__main__":
-    perm_mnist = PermutedMNIST(n_experiences=2, seed=1234)
+    perm_mnist = PermutedMNIST(n_experiences=5, seed=1234)
 
     input_dim = 28
     seq_len = 28

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 
-class QuestionClassifier(nn.Module):
+class QuestionClassifierRNN(nn.Module):
     
     def __init__(self, emb_dim, fc_dim, rnn_hidden_dim, num_classes, device):
         super().__init__()
@@ -31,14 +31,14 @@ class QuestionClassifier(nn.Module):
         # embed = [bs, seq_len, emb_dim]
 
         
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths)
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths, batch_first=True)
         # pack sequence to ignore padded positions while calculating hidden states.
         # projected = F.relu(self.projection_layer(embed))
         # projected = [bs, seq_len, projection_dim]
         
         packed_output, hidden = self.rnn(packed_embedded)
 
-        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output)
+        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
         # out = [bs, seq_len, rnn_hidden_dim]
         # hidden = [1, bs, rnn_hidden_dim]
         # output over padded tokens are zero tensors
